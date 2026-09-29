@@ -1,1 +1,39 @@
+name: Slack-Integrated CI/CD Pipeline
 
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Syntax Linting
+        run: python -m py_compile app.py
+
+      - name: Execute Automated Unit Tests
+        run: python test_app.py
+
+      - name: Dispatch Slack Success Notification
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ *CI/CD Pipeline Succeeded!*\n• *Repository:* '"${{ github.repository }}"'\n• *Branch:* '"${{ github.ref_name }}"'\n• *Commit:* '"${{ github.sha }}"'\n• *Status:* Build & Tests Passed."}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Dispatch Slack Failure Notification
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"🚨 *CI/CD Pipeline Failed!*\n• *Repository:* '"${{ github.repository }}"'\n• *Branch:* '"${{ github.ref_name }}"'\n• *Commit:* '"${{ github.sha }}"'\n• *Action Required:* Check GitHub Actions logs."}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
